@@ -1,0 +1,49 @@
+name: Build Windows
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            make
+            autoconf
+            automake
+            libtool
+            mingw-w64-x86_64-gcc
+
+      - name: Build
+        run: |
+          autoreconf -is
+          ./configure
+          make -j$(nproc)
+
+      - name: Find executable
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path . -Recurse -Filter *.exe |
+            Select-Object FullName
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: |
+            **/*.exe
+          if-no-files-found: error
